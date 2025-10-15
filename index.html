@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Escondite de Peluche 2D</title>
+    <!-- Incluimos la fuente Inter para un look limpio -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Paleta de Colores Tierna y Ligeramente Inquietante */
+        :root {
+            --color-bg: #F0E8F5; /* Lavanda muy pálido */
+            --color-primary: #FFB6C1; /* Rosa claro (se usa solo para detalles ahora) */
+            --color-secondary: #AEC6CF; /* Azul polvoriento (Muros del Laberinto) */
+            --color-text: #3D003D; /* Púrpura oscuro e inquietante */
+            --color-danger: #800000; /* Marrón/Rojo oscuro */
+            --color-safe: #90EE90; /* Verde menta suave */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: background-color 0.5s;
+            flex-direction: column;
+        }
+
+        /* Contenedor principal del juego */
+        #game-container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 
+                        0 0 15px rgba(255, 182, 193, 0.7); /* Sombra con toque rosa */
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--color-danger);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        #game-info {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: var(--color-secondary);
+            color: white;
+            border-radius: 10px;
+            font-weight: bold;
+            gap: 20px;
+        }
+
+        /* Canvas - El campo de juego */
+        #game-canvas {
+            border: 3px solid var(--color-text);
+            background-color: #E0F7FA; /* Fondo de habitación muy claro, azul bebé */
+            display: block;
+            margin: 0 auto;
+            border-radius: 10px;
+        }
+
+        /* Instrucciones y Ayuda */
+        #instructions {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: var(--color-text);
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+        }
+        
+        /* Modal - Manteniendo la estética de terror tierno */
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 25px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 90%;
+            border: 5px solid var(--color-danger);
+            animation: pulse 1s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { border-color: rgba(128, 0, 0, 0.5); }
+            to { border-color: var(--color-danger); }
+        }
+
+        #modal-text {
+            font-size: 1.5rem;
+            color: var(--color-text);
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        #modal-button {
+            background-color: var(--color-danger);
+            color: white;
+            border: 3px solid var(--color-text);
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background-color 0.2s;
+            box-shadow: 0 3px 0 var(--color-text);
+        }
+
+        #modal-button:hover {
+            background-color: #A00000;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            h1 { font-size: 1.5rem; }
+            #game-info { font-size: 0.9rem; }
+            #modal-text { font-size: 1.2rem; }
+        }
+
+        /* Clase para el fondo cuando hay peligro */
+        .danger-mode {
+            background-color: #F8DDE1 !important; /* Rosa pálido para el body */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>🐰 El Laberinto de Peluche 🐻</h1>
+        <p>Encuentra al Osito antes de que las Sombras te atrapen.</p>
+
+        <div id="game-info">
+            <span>Nivel: <span id="level-display">1</span></span>
+            <span>Sombras: <span id="shadow-count">1</span></span>
+        </div>
+
+        <!-- Canvas de 560x400 para una cuadrícula de 28x20 (20px por celda) -->
+        <canvas id="game-canvas" width="560" height="400"></canvas>
+
+        <div id="instructions">
+            **Controles:** Usa las flechas (← ↑ → ↓) o **WASD** para mover a tu conejito blanco. **¡Encuentra al Osito Marrón!**
+        </div>
+    </div>
+
+    <!-- Modal/Message Box for Win/Loss/Info -->
+    <div id="modal-overlay">
+        <div id="modal-box">
+            <p id="modal-text"></p>
+            <button id="modal-button" onclick="closeModal()">Comenzar / Jugar de Nuevo</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Setup de Variables y Constantes ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // El tamaño de la celda del laberinto (28x20 celdas)
+        const WALL_SIZE = 20; 
+        const SHADOW_SPEED_BASE = 1.2;
+        // REDUCCIÓN: Reducimos el radio para evitar que se atore en esquinas
+        const SHADOW_RADIUS = 9; 
+        const RABBIT_RADIUS = 9; // MODIFICADO: Reducido de 10 a 9 para dar un píxel de margen en el camino.
+        const TEDDY_RADIUS = 15; 
+        
+        // Referencias del DOM para la interfaz
+        const levelDisplay = document.getElementById('level-display');
+        const shadowCountDisplay = document.getElementById('shadow-count');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalText = document.getElementById('modal-text');
+        const modalButton = document.getElementById('modal-button');
+        const body = document.body;
+
+        let game;
+        let animationFrameId;
+        
+        // Definición del laberinto 28x20 (0=camino, 1=pared)
+        const MAZE_GRID = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,1,1,0,1,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,1],
+            [1,0,1,0,1,1,1,1,1,1,0,1,0,1,0,1,1,1,1,1,1,1,0,1,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,1,1,0,1,0,1],
+            [1,0,1,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,1],
+            [1,0,1,0,1,1,1,1,1,1,0,1,0,1,0,1,1,1,1,1,1,1,0,1,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+            [1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,1,1,0,1,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        // --- Utilidad de Colisión de Muro ---
+        function checkWallCollision(x, y, radius, grid) {
+            const gridW = grid[0].length;
+            const gridH = grid.length;
+
+            const startCol = Math.floor((x - radius) / WALL_SIZE);
+            const endCol = Math.floor((x + radius) / WALL_SIZE);
+            const startRow = Math.floor((y - radius) / WALL_SIZE);
+            const endRow = Math.floor((y + radius) / WALL_SIZE);
+
+            for (let r = startRow; r <= endRow; r++) {
+                for (let c = startCol; c <= endCol; c++) {
+                    if (r < 0 || r >= gridH || c < 0 || c >= gridW) continue;
+                    
+                    if (grid[r][c] === 1) {
+                        const wallX = c * WALL_SIZE;
+                        const wallY = r * WALL_SIZE;
+
+                        const closestX = Math.max(wallX, Math.min(x, wallX + WALL_SIZE));
+                        const closestY = Math.max(wallY, Math.min(y, wallY + WALL_SIZE));
+
+                        const dx = x - closestX;
+                        const dy = y - closestY;
+
+                        if ( (dx * dx + dy * dy) < (radius * radius) ) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // --- Clases de Entidades (Rabbit, Shadow, TeddyBear) ---
+
+        class Entity {
+            constructor(x, y, radius, color) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+            }
+
+            draw() {
+                // 1. Dibujar contorno oscuro para visibilidad
+                ctx.strokeStyle = 'var(--color-text)'; // Púrpura oscuro
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.closePath();
+                
+                // 2. Rellenar con color
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        class Rabbit extends Entity {
+            constructor(startX, startY) {
+                // Conejo es blanco
+                super(startX, startY, RABBIT_RADIUS, '#FFFFFF');
+                this.speed = 3;
+                this.dx = 0;
+                this.dy = 0;
+                this.nextX = startX;
+                this.nextY = startY;
+            }
+
+            update(grid) {
+                this.nextX = this.x + this.dx;
+                this.nextY = this.y + this.dy;
+
+                // Chequeo de colisión en X (permite deslizar si Y está bloqueado)
+                if (!checkWallCollision(this.nextX, this.y, this.radius, grid)) {
+                    this.x = this.nextX;
+                } 
+
+                // Chequeo de colisión en Y (permite deslizar si X está bloqueado)
+                if (!checkWallCollision(this.x, this.nextY, this.radius, grid)) {
+                    this.y = this.nextY;
+                }
+            }
+
+            draw() {
+                // Dibujar el cuerpo y contorno (de Entity)
+                super.draw();
+
+                // Dibujar orejas (estética de peluche)
+                ctx.fillStyle = this.color; 
+                const earSize = this.radius * 0.6;
+                
+                // Oreja izquierda
+                ctx.beginPath();
+                ctx.arc(this.x - this.radius * 0.6, this.y - this.radius * 0.9, earSize, 0, Math.PI);
+                ctx.fill();
+                // Oreja derecha
+                ctx.beginPath();
+                ctx.arc(this.x + this.radius * 0.6, this.y - this.radius * 0.9, earSize, 0, Math.PI);
+                ctx.fill();
+
+                // Dibujar ojos (siempre en color oscuro)
+                ctx.fillStyle = 'var(--color-text)';
+                const eyeOffset = this.radius * 0.3;
+                const eyeSize = this.radius * 0.15;
+
+                ctx.beginPath();
+                ctx.arc(this.x - eyeOffset, this.y - eyeOffset, eyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.arc(this.x + eyeOffset, this.y + eyeOffset, eyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        class Shadow extends Entity {
+            constructor(rabbit, grid, level) {
+                let x, y;
+                do {
+                    let col = Math.floor(Math.random() * (MAZE_GRID[0].length - 2)) + 1;
+                    let row = Math.floor(Math.random() * (MAZE_GRID.length - 2)) + 1;
+                    
+                    x = col * WALL_SIZE + WALL_SIZE / 2;
+                    y = row * WALL_SIZE + WALL_SIZE / 2;
+                } while (grid[Math.floor(y/WALL_SIZE)][Math.floor(x/WALL_SIZE)] === 1 || Math.hypot(x - rabbit.x, y - rabbit.y) < 150);
+                
+                // Color semi-transparente para la estética de "sombra"
+                super(x, y, SHADOW_RADIUS, 'rgba(61, 0, 61, 0.7)'); 
+
+                this.speed = SHADOW_SPEED_BASE * (1 + (level - 1) * 0.2); 
+                this.target = rabbit;
+
+                // Variables para el mecanismo anti-atasco (para IA)
+                this.stuckCounter = 0; // Contador de frames sin moverse
+                this.randomNudge = { x: 0, y: 0, timer: 0 }; // Impulso aleatorio
+            }
+
+            update(grid) {
+                // 1. Calcular la dirección base hacia el objetivo
+                const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+                
+                const currentSpeed = this.speed;
+                let vx = Math.cos(angle) * currentSpeed;
+                let vy = Math.sin(angle) * currentSpeed;
+
+                let movedX = false;
+                let movedY = false;
+
+                // --- Mecanismo anti-atasco ---
+                if (this.stuckCounter > 30) { // Si lleva 30 frames atascado (aprox. 0.5s)
+                    if (this.randomNudge.timer === 0) {
+                        // Generar un nuevo impulso aleatorio para desatascar
+                        this.randomNudge.x = (Math.random() * 2 - 1) * 0.5 * currentSpeed; // Nudge pequeño
+                        this.randomNudge.y = (Math.random() * 2 - 1) * 0.5 * currentSpeed;
+                        this.randomNudge.timer = 60; // Aplicar por 1 segundo (60 frames)
+                        this.stuckCounter = 0;
+                    }
+                }
+                
+                if (this.randomNudge.timer > 0) {
+                    // Aplicar el impulso aleatorio temporal
+                    vx += this.randomNudge.x;
+                    vy += this.randomNudge.y;
+                    this.randomNudge.timer--;
+                } else {
+                    this.randomNudge.x = 0;
+                    this.randomNudge.y = 0;
+                }
+                // --- Fin anti-atasco ---
+
+
+                // 2. Mover en X y chequear colisión (permite deslizar)
+                let nextX = this.x + vx;
+                if (!checkWallCollision(nextX, this.y, this.radius, grid)) {
+                    this.x = nextX;
+                    movedX = true;
+                }
+
+                // 3. Mover en Y y chequear colisión (permite deslizar)
+                let nextY = this.y + vy;
+                if (!checkWallCollision(this.x, nextY, this.radius, grid)) {
+                    this.y = nextY;
+                    movedY = true;
+                }
+
+                // 4. Actualizar contador de atasco
+                if (!movedX && !movedY) {
+                    this.stuckCounter++;
+                } else {
+                    this.stuckCounter = 0;
+                }
+            }
+            
+            draw() {
+                 // Dibujar cuerpo y contorno (de Entity)
+                 super.draw();
+
+                 // Dibujar un ojo simple y brillante en el centro
+                 ctx.fillStyle = 'white';
+                 ctx.beginPath();
+                 ctx.arc(this.x, this.y, this.radius * 0.3, 0, Math.PI * 2);
+                 ctx.fill();
+                 ctx.closePath();
+            }
+        }
+
+        class TeddyBear extends Entity {
+            constructor(gridX, gridY) {
+                const x = gridX * WALL_SIZE + WALL_SIZE / 2;
+                const y = gridY * WALL_SIZE + WALL_SIZE / 2;
+                // Color de Oso: Marrón suave
+                super(x, y, TEDDY_RADIUS, '#CD853F'); 
+            }
+
+            draw() {
+                // Dibujar cuerpo y contorno (de Entity)
+                super.draw();
+
+                // Dibujar Orejas
+                ctx.fillStyle = this.color;
+                const earSize = this.radius * 0.4;
+                ctx.beginPath();
+                ctx.arc(this.x - this.radius * 0.7, this.y - this.radius * 0.8, earSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.arc(this.x + this.radius * 0.7, this.y - this.radius * 0.8, earSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Dibujar una nariz/boca de costura
+                ctx.strokeStyle = 'var(--color-text)';
+                ctx.lineWidth = 1;
+                
+                // Ojos de costura
+                ctx.fillStyle = 'var(--color-text)';
+                ctx.beginPath();
+                ctx.arc(this.x - 3, this.y - 3, 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.arc(this.x + 3, this.y + 3, 1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+
+                // Nariz y boca
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2); // Nariz
+                ctx.fill();
+                ctx.moveTo(this.x, this.y + 1.5);
+                ctx.lineTo(this.x, this.y + 4);
+                ctx.stroke();
+                ctx.closePath();
+            }
+        }
+
+        // --- Lógica del Juego ---
+
+        class Game {
+            constructor() {
+                this.level = 1;
+                this.mazeGrid = MAZE_GRID; 
+                this.rabbit = null;
+                this.teddyBear = null;
+                this.enemies = [];
+                this.isRunning = false;
+
+                // Puntos de inicio y fin (en coordenadas de cuadrícula)
+                this.startPos = { col: 1, row: 1 };
+                this.endPos = { col: 26, row: 18 };
+            }
+
+            reset() {
+                this.level = 1;
+                this.isRunning = true;
+                
+                // Posiciones de inicio del conejo
+                const startX = this.startPos.col * WALL_SIZE + WALL_SIZE / 2;
+                const startY = this.startPos.row * WALL_SIZE + WALL_SIZE / 2;
+                
+                this.rabbit = new Rabbit(startX, startY);
+                this.teddyBear = new TeddyBear(this.endPos.col, this.endPos.row);
+                
+                // El nivel 1 empieza con 2 sombras (1 + 1)
+                this.enemies = [];
+                for (let i = 0; i < this.level + 1; i++) {
+                    this.enemies.push(new Shadow(this.rabbit, this.mazeGrid, this.level));
+                }
+                
+                levelDisplay.textContent = this.level;
+                shadowCountDisplay.textContent = this.enemies.length;
+            }
+
+            update(deltaTime) {
+                if (!this.isRunning) return;
+
+                // 1. Actualizar el conejo (maneja colisiones con muros)
+                this.rabbit.update(this.mazeGrid);
+
+                // 2. Actualizar las sombras (persiguen al conejo y manejan colisiones con muros)
+                this.enemies.forEach(shadow => shadow.update(this.mazeGrid));
+
+                // 3. Chequear colisiones (Osito/Ganar o Sombra/Perder)
+                this.checkCollisions();
+            }
+            
+            checkCollisions() {
+                // Chequear colisión con las sombras (Perder)
+                for (const shadow of this.enemies) {
+                    const distance = Math.hypot(this.rabbit.x - shadow.x, this.rabbit.y - shadow.y);
+                    // Usamos un radio de colisión más generoso para la sombra
+                    if (distance < this.rabbit.radius + shadow.radius) { 
+                        this.gameOver();
+                        return;
+                    }
+                }
+
+                // Chequear colisión con el osito (Ganar Nivel)
+                const bearDistance = Math.hypot(this.rabbit.x - this.teddyBear.x, this.rabbit.y - this.teddyBear.y);
+                if (bearDistance < this.rabbit.radius + this.teddyBear.radius) {
+                    this.nextLevel();
+                }
+            }
+
+            drawMaze() {
+                const wallColor = 'var(--color-secondary)';
+                ctx.fillStyle = wallColor;
+
+                for (let r = 0; r < this.mazeGrid.length; r++) {
+                    for (let c = 0; c < this.mazeGrid[r].length; c++) {
+                        if (this.mazeGrid[r][c] === 1) {
+                            // Dibujar los bloques de pared (con un pequeño efecto 3D)
+                            ctx.fillStyle = wallColor;
+                            ctx.fillRect(c * WALL_SIZE, r * WALL_SIZE, WALL_SIZE, WALL_SIZE);
+                            
+                            ctx.fillStyle = '#6D8A95'; // Color de sombra/borde
+                            ctx.beginPath();
+                            ctx.arc(c * WALL_SIZE + WALL_SIZE / 2, r * WALL_SIZE + WALL_SIZE / 2, WALL_SIZE/2 - 2, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            draw() {
+                // Limpiar el lienzo
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                
+                // 1. Dibujar el laberinto
+                this.drawMaze();
+
+                // 2. Dibujar el Osito
+                this.teddyBear.draw();
+
+                // 3. Dibujar todas las entidades (conejo y sombras)
+                this.rabbit.draw();
+                this.enemies.forEach(shadow => shadow.draw());
+            }
+
+            gameOver() {
+                this.isRunning = false;
+                cancelAnimationFrame(animationFrameId);
+                body.classList.remove('danger-mode');
+                showModal(`La Sombra te atrapó antes de que pudieras abrazar al Osito en el Nivel ${this.level}. ¡Fin del juego!`, startGame);
+            }
+
+            nextLevel() {
+                this.isRunning = false;
+                cancelAnimationFrame(animationFrameId);
+
+                this.level++;
+                
+                // Posiciones de inicio del conejo
+                const startX = this.startPos.col * WALL_SIZE + WALL_SIZE / 2;
+                const startY = this.startPos.row * WALL_SIZE + WALL_SIZE / 2;
+                
+                this.rabbit = new Rabbit(startX, startY); 
+                
+                // El nivel N tendrá N+1 sombras y se moverán más rápido
+                this.enemies = [];
+                for (let i = 0; i < this.level + 1; i++) {
+                    this.enemies.push(new Shadow(this.rabbit, this.mazeGrid, this.level));
+                }
+                
+                levelDisplay.textContent = this.level;
+                shadowCountDisplay.textContent = this.enemies.length;
+                body.classList.remove('danger-mode');
+
+                showModal(
+                    `¡Lo lograste! El Osito está a salvo. Ahora te enfrentas al Nivel ${this.level} con ${this.enemies.length} Sombras.`,
+                    () => {
+                        closeModal();
+                        this.isRunning = true;
+                        gameLoop(0);
+                    }
+                );
+            }
+        }
+
+        // --- Funciones de Utilidad y Loop Principal ---
+        
+        function showModal(message, action) {
+            modalText.textContent = message;
+            modalButton.onclick = action;
+            modalOverlay.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modalOverlay.style.display = 'none';
+        }
+
+        let lastTime = 0;
+        /**
+         * Bucle principal del juego.
+         */
+        function gameLoop(currentTime) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            if (game.isRunning) {
+                game.update(deltaTime);
+                game.draw();
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        /**
+         * Inicializa el juego.
+         */
+        function startGame() {
+            closeModal();
+            game = new Game();
+            game.reset();
+            gameLoop(0); // Iniciar el loop
+        }
+
+        // --- Manejo de Controles de Teclado ---
+
+        const keys = {
+            ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
+            w: false, s: false, a: false, d: false
+        };
+
+        function updatePlayerDirection() {
+            if (!game || !game.rabbit) return;
+
+            game.rabbit.dx = 0;
+            game.rabbit.dy = 0;
+
+            if (keys.ArrowUp || keys.w) {
+                game.rabbit.dy = -game.rabbit.speed;
+            }
+            if (keys.ArrowDown || keys.s) {
+                game.rabbit.dy = game.rabbit.speed;
+            }
+            if (keys.ArrowLeft || keys.a) {
+                game.rabbit.dx = -game.rabbit.speed;
+            }
+            if (keys.ArrowRight || keys.d) {
+                game.rabbit.dx = game.rabbit.speed;
+            }
+
+            // Normalizar velocidad para movimiento diagonal
+            if (game.rabbit.dx !== 0 && game.rabbit.dy !== 0) {
+                const diagSpeed = game.rabbit.speed / Math.sqrt(2);
+                game.rabbit.dx = game.rabbit.dx > 0 ? diagSpeed : -diagSpeed;
+                game.rabbit.dy = game.rabbit.dy > 0 ? diagSpeed : -diagSpeed;
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) {
+                // No prevenir el default si la tecla ya está presionada
+                if (!keys[key]) {
+                    e.preventDefault(); 
+                }
+                keys[key] = true;
+                updatePlayerDirection();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) {
+                keys[key] = false;
+                updatePlayerDirection();
+            }
+        });
+
+        // Iniciar el juego al cargar la página
+        window.onload = () => {
+             // Pequeño mensaje de introducción
+             showModal(
+                "¡El Amigo Sombra te persigue! Usa las flechas o WASD para guiar al conejito a través del laberinto y encontrar al Osito de Peluche. ¡Conseguir el Osito te lleva al siguiente nivel!", 
+                startGame
+            );
+        };
+    </script>
+</body>
+</html>
+
+ 
